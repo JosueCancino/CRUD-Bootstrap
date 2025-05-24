@@ -27,7 +27,7 @@
 
     $empleados = obtenerEmpleados($conexion);
     $contratos = obtenerContratos($conexion);
-    $totalEmpleados = $empleados->nrowCount();
+    $totalEmpleados = $empleados->rowCount();
     ?>
 
     <h1 class="text-center mt-5 mb-5 fw-bold"></h1>
