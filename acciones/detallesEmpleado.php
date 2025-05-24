@@ -1,13 +1,28 @@
 <?php
 require_once("../config/config.php");
-$id = $_GET['id'];
 
-// Consultar la base de datos para obtener los detalles del empleado
-$sql = "SELECT * FROM tbl_empleados WHERE id = $id LIMIT 1";
-$query = $conexion->query($sql);
-$empleado = $query->fetch_assoc();
+// Verifica si el ID está presente y es válido
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-// Devolver los detalles del empleado como un objeto JSON
-header('Content-type: application/json; charset=utf-8');
-echo json_encode($empleado);
-exit;
+if ($id <= 0) {
+    header('Content-type: application/json; charset=utf-8');
+    echo json_encode(['error' => 'ID inválido']);
+    exit;
+}
+
+try {
+    // Usar consulta preparada para evitar inyección
+    $sql = "SELECT * FROM tbl_empleados WHERE id = :id LIMIT 1";
+    $stmt = $conexion->prepare($sql);
+    $stmt->execute(['id' => $id]);
+    $empleado = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    header('Content-type: application/json; charset=utf-8');
+    echo json_encode($empleado ?: ['error' => 'Empleado no encontrado']);
+    exit;
+
+} catch (PDOException $e) {
+    header('Content-type: application/json; charset=utf-8');
+    echo json_encode(['error' => 'Error al consultar: ' . $e->getMessage()]);
+    exit;
+}
