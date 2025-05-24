@@ -7,8 +7,8 @@ $password = "UcfOse1UhwBBoIWFyyKgBpURpJhiD1GD";          // tu contraseña
 
 // Intenta establecer conexión con PDO
 try {
-    $pdo = new PDO("pgsql:host=$host;port=$port;dbname=$dbname", $user, $password);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $conexion = new PDO("pgsql:host=$host;port=$port;dbname=$dbname", $user, $password);
+    $conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     // echo "Conexión exitosa"; // Puedes usar esto para probar
 } catch (PDOException $e) {
     die("Error de conexión: " . $e->getMessage());
