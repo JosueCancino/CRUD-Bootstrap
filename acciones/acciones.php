@@ -72,7 +72,7 @@ function obtenerContratos($conexion)
 
     $resultado = $conexion->query($sql);
     $contrato = [];
-    if ($resultado && $resultado->num_rows > 0) {
+    if ($resultado && $resultado->rowCount()> 0) {
         while ($row = $resultado->fetch_assoc()) {
             $contrato[] = $row;
         }
