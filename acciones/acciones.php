@@ -73,7 +73,7 @@ function obtenerContratos($conexion)
     $resultado = $conexion->query($sql);
     $contrato = [];
     if ($resultado && $resultado->rowCount()> 0) {
-        while ($row = $resultado->fetch_assoc()) {
+        while ($row = $resultado->fetch(PDO::FETCH_ASSOC)) {
             $contrato[] = $row;
         }
     }
