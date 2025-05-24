@@ -59,7 +59,7 @@ $result = $conexion->query($sql);
                             <tbody id="lista_contratos">
                                 <?php
                                 if ($result && $result->rowCount() > 0) {
-                                    while ($row = $result->fetch_assoc()) {
+                                    while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
                                         echo "<tr>
                                                 <td>" . $row['id'] . "</td>
                                                 <td>" . htmlspecialchars($row['tipo_contrato']) . "</td>

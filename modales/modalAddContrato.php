@@ -43,7 +43,7 @@ try {
                                     $contratos = $conexion->query($sql);
                                     
                                     if ($contratos && $contratos->rowCount() > 0) {
-                                        while ($row = $contratos->fetch_assoc()) {
+                                        while ($row = $contratos->fetch(PDO::FETCH_ASSOC)) {
                                             echo "<option value='" . $row['id'] . "'>" . htmlspecialchars($row['tipo_contrato']) . "</option>";
                                         }
                                     } else {

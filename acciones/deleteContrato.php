@@ -1,18 +1,18 @@
 <?php
-// Establecer conexión a la base de datos
-$host = "localhost";
-$usuario = "root";
-$contrasena = "";
-$base_de_datos = "bd_empleados";
+// Establecer conexión directamente en este archivo
+$host = "dpg-d0oc1u8dl3ps73du8ekg-a";   // el host de Render
+$port = "5432";
+$dbname = "bd_empleados_5765";          // el nombre de tu base de datos
+$user = "josuecancino";                 // tu usuario
+$password = "UcfOse1UhwBBoIWFyyKgBpURpJhiD1GD";          // tu contraseña
 
-$conexion = new mysqli($host, $usuario, $contrasena, $base_de_datos);
-
-// Verificar conexión
-if ($conexion->connect_error) {
-    die(json_encode([
-        'success' => false,
-        'message' => 'Error de conexión: ' . $conexion->connect_error
-    ]));
+// Intenta establecer conexión con PDO
+try {
+    $conexion = new PDO("pgsql:host=$host;port=$port;dbname=$dbname", $user, $password);
+    $conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    // echo "Conexión exitosa"; // Puedes usar esto para probar
+} catch (PDOException $e) {
+    die("Error de conexión: " . $e->getMessage());
 }
 
 // Configurar headers para JSON
