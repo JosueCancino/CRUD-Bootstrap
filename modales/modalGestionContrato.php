@@ -58,7 +58,7 @@ $result = $conexion->query($sql);
                             </thead>
                             <tbody id="lista_contratos">
                                 <?php
-                                if ($result && $result->num_rows > 0) {
+                                if ($result && $result->rowCount() > 0) {
                                     while ($row = $result->fetch_assoc()) {
                                         echo "<tr>
                                                 <td>" . $row['id'] . "</td>
