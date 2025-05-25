@@ -46,7 +46,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         echo json_encode(['success' => false, 'message' => 'No se ha enviado ningún archivo válido']);
     }
 }
-?>
+
 
 /**
  * Función para obtener todos los empleados 
@@ -84,3 +84,4 @@ function obtenerContratos($conexion)
     }
     return $contrato;
 }
+?>
