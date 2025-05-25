@@ -35,7 +35,7 @@ try {
     $stmt = $conexion->prepare("
         SELECT 
             e.id as empleado_id,
-            CONCAT(e.nombres, ' ', e.apellidos) as nombre_empleado
+            CONCAT(e.nombre, ' ', e.apellido) as nombre_empleado
         FROM tbl_empleados e 
         WHERE e.id = :empleado_id
     ");
