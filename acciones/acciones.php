@@ -1,5 +1,4 @@
 <?php
-require_once("/../config/config.php");
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $nombre   = trim($_POST['nombre'] ?? '');
@@ -49,37 +48,38 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 }
 
 /**
- * ✅ Obtener todos los empleados
+ * Función para obtener todos los empleados 
  */
-function obtenerEmpleados($conexion) {
-    try {
-        $stmt = $conexion->query("SELECT * FROM tbl_empleados ORDER BY id ASC");
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (PDOException $e) {
-        return [];
+function obtenerEmpleados($conexion)
+{
+    $sql = "SELECT * FROM tbl_empleados ORDER BY id ASC";
+    $resultado = $conexion->query($sql);
+    if (!$resultado) {
+        return false;
     }
+    return $resultado;
 }
 
-/**
- * ✅ Obtener empleados con tipo de contrato (si existe)
- */
-function obtenerContratos($conexion) {
-    try {
-        $sql = "SELECT 
-                    e.*, 
-                    COALESCE(c.tipo_contrato, 'Sin asignar') AS tipo_contrato
-                FROM 
-                    tbl_empleados e
-                LEFT JOIN 
-                    tbl_detalle_contrato dc ON e.id = dc.empleado_id
-                LEFT JOIN 
-                    tbl_contratos c ON dc.contrato_id = c.id
-                ORDER BY 
-                    e.id ASC";
-        $stmt = $conexion->query($sql);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (PDOException $e) {
-        return [];
+function obtenerContratos($conexion)
+{
+    $sql = "SELECT 
+            e.*, 
+            COALESCE(c.tipo_contrato, 'Sin asignar') AS tipo_contrato
+        FROM 
+            tbl_empleados e
+        LEFT JOIN 
+            tbl_detalle_contrato dc ON e.id = dc.empleado_id
+        LEFT JOIN 
+            tbl_contratos c ON dc.contrato_id = c.id
+        ORDER BY 
+            e.id ASC";
+
+    $resultado = $conexion->query($sql);
+    $contrato = [];
+    if ($resultado && $resultado->rowCount()> 0) {
+        while ($row = $resultado->fetch(PDO::FETCH_ASSOC)) {
+            $contrato[] = $row;
+        }
     }
+    return $contrato;
 }
-?>
