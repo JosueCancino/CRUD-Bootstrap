@@ -90,67 +90,52 @@ try {
 
 <script>
 function guardarContrato() {
-    // Validación previa
     const form = document.getElementById('formularioContrato');
-    const empleadoId = form.empleado_id.value;
-    const contratoId = form.contrato_id.value;
-    const fechaInicio = form.fecha_inicio.value;
-    const salario = form.salario.value;
-
-    if (!empleadoId || !contratoId || !fechaInicio || !salario) {
-        toastr.error('Complete todos los campos obligatorios');
-        return;
-    }
-
-    // Validar fecha fin si existe
-    if (form.fecha_fin.value && new Date(form.fecha_fin.value) < new Date(fechaInicio)) {
-        toastr.error('La fecha fin no puede ser anterior a la fecha inicio');
-        return;
-    }
-
-    // Configurar botón
-    const btn = document.getElementById('btnGuardarContrato');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Procesando...';
-
-    // Crear FormData y asegurar todos los campos
     const formData = new FormData(form);
-    formData.append('empleado_id', empleadoId);
-    formData.append('contrato_id', contratoId);
-    formData.append('fecha_inicio', fechaInicio);
-    formData.append('salario', salario);
-    if (form.fecha_fin.value) formData.append('fecha_fin', form.fecha_fin.value);
-
-    // Enviar datos
+    
+    // Validar campos obligatorios
+    const empleadoId = document.getElementById('empleado_id').value;
+    const contratoId = document.getElementById('contrato_id_select').value;
+    const fechaInicio = document.getElementById('fecha_inicio').value;
+    const salario = document.getElementById('salario').value;
+    
+    if (!empleadoId || !contratoId || !fechaInicio || !salario) {
+        toastr.error('Por favor complete todos los campos obligatorios');
+        return;
+    }
+    
+    const btnGuardar = document.getElementById('btnGuardarContrato');
+    btnGuardar.disabled = true;
+    btnGuardar.textContent = 'Guardando...';
+    
     fetch('acciones/registrarContrato.php', {
         method: 'POST',
         body: formData
     })
-    .then(response => {
-        if (!response.ok) throw new Error('Error en la red');
-        return response.json();
-    })
+    .then(response => response.json())
     .then(data => {
         if (data.success) {
             toastr.success(data.message);
-            // Cerrar modal y recargar
-            bootstrap.Modal.getInstance(document.getElementById('agregarContratoModal')).hide();
+            // Cerrar modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('agregarContratoModal'));
+            modal.hide();
+            // Refrescar tabla si existe la función
             if (typeof refreshTable === 'function') {
                 refreshTable();
             } else {
                 location.reload();
             }
         } else {
-            throw new Error(data.message || 'Error desconocido');
+            toastr.error(data.message || 'Error al procesar el contrato');
         }
     })
     .catch(error => {
-        toastr.error(error.message);
         console.error('Error:', error);
+        toastr.error('Hubo un error al procesar el contrato');
     })
     .finally(() => {
-        btn.disabled = false;
-        btn.textContent = btn.dataset.originalText || 'Guardar Contrato';
+        btnGuardar.disabled = false;
+        btnGuardar.textContent = 'Guardar Contrato';
     });
 }
 

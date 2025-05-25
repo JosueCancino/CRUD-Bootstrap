@@ -14,14 +14,14 @@ async function modalRegistrarContrato(empleadoId, nombreEmpleado = null) {
             if (modal) {
                 modal.hide();
             }
-            existingModal.remove();
+            existingModal.remove(); // Eliminar la modal existente
         }
     
         // Cargar el contenido de la modal
         const response = await fetch("modales/modalAddContrato.php");
     
         if (!response.ok) {
-            throw new Error(`Error al cargar la modal: ${response.status}`);
+            throw new Error("Error al cargar la modal");
         }
     
         // Obtener el contenido de la modal
@@ -63,7 +63,7 @@ async function cargarDatosContrato(empleadoId) {
         const response = await fetch(`acciones/getContratoEmpleado.php?empleado_id=${empleadoId}`);
         
         if (!response.ok) {
-            throw new Error(`Error HTTP: ${response.status}`);
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const data = await response.json();
@@ -75,7 +75,7 @@ async function cargarDatosContrato(empleadoId) {
             const empleadoIdField = document.getElementById('empleado_id');
             
             if (nombreEmpleadoField && empleadoIdField) {
-                nombreEmpleadoField.value = data.data.nombre_empleado || '';
+                nombreEmpleadoField.value = data.data.nombre_empleado;
                 empleadoIdField.value = data.data.empleado_id || empleadoId;
             }
             
@@ -92,11 +92,11 @@ async function cargarDatosContrato(empleadoId) {
                 const btnGuardar = document.getElementById('btnGuardarContrato');
                 const tituloModal = document.querySelector('.titulo_modal');
                 
-                if (detalleIdField) detalleIdField.value = data.data.detalle_id || '';
-                if (contratoIdSelect) contratoIdSelect.value = data.data.contrato_id || '';
-                if (fechaInicioField) fechaInicioField.value = data.data.fecha_inicio || '';
+                if (detalleIdField) detalleIdField.value = data.data.detalle_id;
+                if (contratoIdSelect) contratoIdSelect.value = data.data.contrato_id;
+                if (fechaInicioField) fechaInicioField.value = data.data.fecha_inicio;
                 if (fechaFinField) fechaFinField.value = data.data.fecha_fin || '';
-                if (salarioField) salarioField.value = data.data.salario || '';
+                if (salarioField) salarioField.value = data.data.salario;
                 
                 // Mostrar botón de eliminar y cambiar textos
                 if (btnEliminar) btnEliminar.style.display = 'block';
@@ -127,11 +127,11 @@ async function cargarDatosContrato(empleadoId) {
                 if (btnGuardar) btnGuardar.textContent = 'Guardar Contrato';
             }
         } else {
-            throw new Error(data.message || 'Error al cargar los datos del contrato');
+            toastr.error(data.message || 'Error al cargar los datos del contrato');
         }
     } catch (error) {
         console.error('Error al cargar datos de contrato:', error);
-        toastr.error(error.message || 'Error al cargar los datos del contrato');
+        toastr.error('Error al cargar los datos del contrato');
     }
 }
 
@@ -139,22 +139,15 @@ async function cargarDatosContrato(empleadoId) {
  * Función para guardar o actualizar un contrato
  */
 async function guardarContrato() {
-    let btnGuardar = null;
-    let textoOriginal = 'Guardar Contrato';
-    
     try {
         const form = document.getElementById('formularioContrato');
-        if (!form) {
-            throw new Error('No se encontró el formulario');
-        }
-        
         const formData = new FormData(form);
         
         // Validar campos obligatorios
-        const empleadoId = formData.get('empleado_id');
-        const contratoId = formData.get('contrato_id');
-        const fechaInicio = formData.get('fecha_inicio');
-        const salario = formData.get('salario');
+        const empleadoId = document.getElementById('empleado_id').value;
+        const contratoId = document.getElementById('contrato_id_select').value;
+        const fechaInicio = document.getElementById('fecha_inicio').value;
+        const salario = document.getElementById('salario').value;
         
         console.log('Datos a enviar:', {
             empleadoId,
@@ -164,61 +157,51 @@ async function guardarContrato() {
         });
         
         if (!empleadoId || !contratoId || !fechaInicio || !salario) {
-            throw new Error('Por favor complete todos los campos obligatorios');
+            toastr.error('Por favor complete todos los campos obligatorios');
+            return;
         }
         
-        btnGuardar = document.getElementById('btnGuardarContrato');
-        if (!btnGuardar) {
-            throw new Error('No se encontró el botón de guardar');
-        }
-        
-        textoOriginal = btnGuardar.textContent;
+        const btnGuardar = document.getElementById('btnGuardarContrato');
+        const textoOriginal = btnGuardar.textContent;
         btnGuardar.disabled = true;
-        btnGuardar.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Procesando...';
+        btnGuardar.textContent = 'Guardando...';
         
         const response = await fetch('acciones/registrarContrato.php', {
             method: 'POST',
             body: formData
         });
 
-        // Primero verificar si la respuesta es JSON válido
-        const responseText = await response.text();
-        let data;
-        
-        try {
-            data = JSON.parse(responseText);
-        } catch (e) {
-            console.error('La respuesta no es JSON válido:', responseText);
-            throw new Error(`Error en el servidor: ${responseText.substring(0, 100)}...`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
 
+        const data = await response.json();
         console.log('Respuesta del servidor:', data);
         
-        if (!data.success) {
-            throw new Error(data.message || 'Error al procesar el contrato');
-        }
-        
-        toastr.success(data.message);
-        
-        // Cerrar modal
-        const modal = bootstrap.Modal.getInstance(document.getElementById('agregarContratoModal'));
-        if (modal) {
-            modal.hide();
-        }
-        
-        // Refrescar datos
-        if (typeof refreshTable === 'function') {
-            refreshTable();
-        } else if (typeof window.insertEmpleadoTable === 'function') {
-            window.insertEmpleadoTable();
+        if (data.success) {
+            toastr.success(data.message);
+            // Cerrar modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('agregarContratoModal'));
+            if (modal) {
+                modal.hide();
+            }
+            // Refrescar tabla
+            if (typeof refreshTable === 'function') {
+                refreshTable();
+            } else if (typeof window.insertEmpleadoTable === 'function') {
+                window.insertEmpleadoTable();
+            } else {
+                location.reload();
+            }
         } else {
-            location.reload();
+            toastr.error(data.message || 'Error al procesar el contrato');
         }
         
     } catch (error) {
         console.error('Error al guardar contrato:', error);
-        toastr.error(error.message || 'Hubo un error al procesar el contrato');
+        toastr.error('Hubo un error al procesar el contrato');
     } finally {
+        const btnGuardar = document.getElementById('btnGuardarContrato');
         if (btnGuardar) {
             btnGuardar.disabled = false;
             btnGuardar.textContent = textoOriginal;
@@ -231,10 +214,11 @@ async function guardarContrato() {
  */
 async function eliminarContrato() {
     try {
-        const empleadoId = document.getElementById('empleado_id')?.value;
+        const empleadoId = document.getElementById('empleado_id').value;
         
         if (!empleadoId) {
-            throw new Error('No se puede eliminar el contrato');
+            toastr.error('No se puede eliminar el contrato');
+            return;
         }
         
         if (!confirm('¿Está seguro de que desea eliminar este contrato?')) {
@@ -252,52 +236,48 @@ async function eliminarContrato() {
         });
 
         if (!response.ok) {
-            throw new Error(`Error HTTP: ${response.status}`);
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
 
         const data = await response.json();
         console.log('Respuesta del servidor:', data);
         
-        if (!data.success) {
-            throw new Error(data.message || 'Error al eliminar el contrato');
-        }
-        
-        toastr.success(data.message);
-        
-        // Cerrar modal
-        const modal = bootstrap.Modal.getInstance(document.getElementById('agregarContratoModal'));
-        if (modal) {
-            modal.hide();
-        }
-        
-        // Refrescar datos
-        if (typeof refreshTable === 'function') {
-            refreshTable();
-        } else if (typeof window.insertEmpleadoTable === 'function') {
-            window.insertEmpleadoTable();
+        if (data.success) {
+            toastr.success(data.message);
+            // Cerrar modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('agregarContratoModal'));
+            if (modal) {
+                modal.hide();
+            }
+            // Refrescar tabla
+            if (typeof refreshTable === 'function') {
+                refreshTable();
+            } else if (typeof window.insertEmpleadoTable === 'function') {
+                window.insertEmpleadoTable();
+            } else {
+                location.reload();
+            }
         } else {
-            location.reload();
+            toastr.error(data.message || 'Error al eliminar el contrato');
         }
         
     } catch (error) {
         console.error('Error al eliminar contrato:', error);
-        toastr.error(error.message || 'Hubo un error al eliminar el contrato');
+        toastr.error('Hubo un error al eliminar el contrato');
     }
 }
 
 /**
- * Función para refrescar la tabla
+ * Función para refrescar la tabla (puede ser personalizada según tu implementación)
  */
 function refreshTable() {
+    // Esta función puede ser personalizada según cómo manejes la tabla
+    // Por ahora, recargamos la página
     console.log('Refrescando tabla...');
-    if (typeof window.insertEmpleadoTable === 'function') {
-        window.insertEmpleadoTable();
-    } else {
-        location.reload();
-    }
+    location.reload();
 }
 
-// Exportar funciones al ámbito global
+// Hacer las funciones disponibles globalmente
 window.modalRegistrarContrato = modalRegistrarContrato;
 window.cargarDatosContrato = cargarDatosContrato;
 window.guardarContrato = guardarContrato;
