@@ -1,32 +1,54 @@
 <?php
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    include("../config/config.php");
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    require_once("../config/config.php");
 
     // Leer el cuerpo de la solicitud JSON
     $json_data = file_get_contents("php://input");
-    // Decodificar los datos JSON en un array asociativo
     $data = json_decode($json_data, true);
 
+    if (is_array($data)) {
+        $id = isset($data['id']) ? (int)$data['id'] : 0;
+        $avatarName = isset($data['avatar']) ? trim($data['avatar']) : '';
 
-    // Verificar si los datos se decodificaron correctamente
-    if ($data !== null) {
-        $id = $data['id'];
-        $avatarName = $data['avatar'];
+        if ($id <= 0) {
+            echo json_encode(["success" => false, "message" => "ID inválido"]);
+            exit;
+        }
 
-        $sql = "DELETE FROM tbl_empleados WHERE id=$id";
-        if ($conexion->query($sql) === TRUE) {
-            // Eliminar el archivo de imagen si existe
-            $dirLocal = "fotos_empleados";
-            $filePath = $dirLocal . '/' . $avatarName;
-            if (file_exists($filePath)) {
-                unlink($filePath); // Eliminar el archivo de imagen
+        try {
+            $stmt = $conexion->prepare("DELETE FROM tbl_empleados WHERE id = :id");
+            $stmt->execute(['id' => $id]);
+
+            if ($stmt->rowCount() > 0) {
+                // Eliminar archivo si existe
+                $dirLocal = "fotos_empleados";
+                $filePath = $dirLocal . '/' . $avatarName;
+
+                if (!empty($avatarName) && file_exists($filePath)) {
+                    unlink($filePath);
+                }
+
+                echo json_encode([
+                    "success" => true,
+                    "message" => "Empleado eliminado correctamente"
+                ]);
+            } else {
+                echo json_encode([
+                    "success" => false,
+                    "message" => "No se encontró ningún empleado con ese ID"
+                ]);
             }
-            echo json_encode(array("success" => true, "message" => "Empleado eliminado correctamente"));
-        } else {
-            echo json_encode(array("success" => false, "message" => "El parámetro 'id' no se proporcionó"));
+        } catch (PDOException $e) {
+            echo json_encode([
+                "success" => false,
+                "message" => "Error al eliminar el empleado: " . $e->getMessage()
+            ]);
         }
     } else {
-        // Si no se proporcionó el parámetro 'action', devolver un mensaje de error
-        echo json_encode(array("success" => false, "message" => "La acción no se proporcionó"));
+        echo json_encode([
+            "success" => false,
+            "message" => "Datos JSON inválidos o vacíos"
+        ]);
     }
 }
+?>
