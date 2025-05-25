@@ -139,6 +139,10 @@ async function cargarDatosContrato(empleadoId) {
  * Función para guardar o actualizar un contrato
  */
 async function guardarContrato() {
+    // Declarar variables al inicio de la función
+    let btnGuardar = null;
+    let textoOriginal = '';
+    
     try {
         const form = document.getElementById('formularioContrato');
         const formData = new FormData(form);
@@ -161,8 +165,8 @@ async function guardarContrato() {
             return;
         }
         
-        const btnGuardar = document.getElementById('btnGuardarContrato');
-        const textoOriginal = btnGuardar.textContent;
+        btnGuardar = document.getElementById('btnGuardarContrato');
+        textoOriginal = btnGuardar.textContent;
         btnGuardar.disabled = true;
         btnGuardar.textContent = 'Guardando...';
         
@@ -173,6 +177,14 @@ async function guardarContrato() {
 
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        // Verificar que la respuesta sea JSON válido
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const textResponse = await response.text();
+            console.error('Respuesta no es JSON:', textResponse);
+            throw new Error('El servidor no devolvió una respuesta JSON válida');
         }
 
         const data = await response.json();
@@ -199,12 +211,15 @@ async function guardarContrato() {
         
     } catch (error) {
         console.error('Error al guardar contrato:', error);
-        toastr.error('Hubo un error al procesar el contrato');
+        if (error.message.includes('JSON')) {
+            toastr.error('Error en la respuesta del servidor. Revise los logs para más detalles.');
+        } else {
+            toastr.error('Hubo un error al procesar el contrato');
+        }
     } finally {
-        const btnGuardar = document.getElementById('btnGuardarContrato');
         if (btnGuardar) {
             btnGuardar.disabled = false;
-            btnGuardar.textContent = textoOriginal;
+            btnGuardar.textContent = textoOriginal || 'Guardar Contrato';
         }
     }
 }
@@ -239,6 +254,14 @@ async function eliminarContrato() {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
+        // Verificar que la respuesta sea JSON válido
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const textResponse = await response.text();
+            console.error('Respuesta no es JSON:', textResponse);
+            throw new Error('El servidor no devolvió una respuesta JSON válida');
+        }
+
         const data = await response.json();
         console.log('Respuesta del servidor:', data);
         
@@ -263,7 +286,11 @@ async function eliminarContrato() {
         
     } catch (error) {
         console.error('Error al eliminar contrato:', error);
-        toastr.error('Hubo un error al eliminar el contrato');
+        if (error.message.includes('JSON')) {
+            toastr.error('Error en la respuesta del servidor. Revise los logs para más detalles.');
+        } else {
+            toastr.error('Hubo un error al eliminar el contrato');
+        }
     }
 }
 
