@@ -1,9 +1,8 @@
 <?php
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // Activar reporte de errores para debugging
-    error_reporting(E_ALL);
-    ini_set('display_errors', 1);
+    // Headers para respuesta JSON
+    header('Content-Type: application/json; charset=utf-8');
     
     $nombre   = trim($_POST['nombre'] ?? '');
     $edad     = trim($_POST['edad'] ?? '');
@@ -18,14 +17,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         exit;
     }
 
-    if (!is_dir($dirLocal)) {
-        mkdir($dirLocal, 0755, true);
+    // Validar que la edad sea numérica
+    if (!is_numeric($edad) || $edad < 1 || $edad > 120) {
+        echo json_encode(['success' => false, 'message' => 'La edad debe ser un número válido']);
+        exit;
     }
 
-    $nombreArchivo = null; // Inicializar la variable
+    // Crear directorio si no existe
+    if (!is_dir($dirLocal)) {
+        if (!mkdir($dirLocal, 0755, true)) {
+            echo json_encode(['success' => false, 'message' => 'Error al crear directorio para imágenes']);
+            exit;
+        }
+    }
 
-    // Verificar si se subió un archivo
-    if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === 0) {
+    $nombreArchivo = null;
+
+    // Procesar imagen si se subió
+    if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
         $archivoTemporal = $_FILES['avatar']['tmp_name'];
         $nombreOriginal = $_FILES['avatar']['name'];
         $extension = strtolower(pathinfo($nombreOriginal, PATHINFO_EXTENSION));
@@ -33,7 +42,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Validar extensión
         $extensionesPermitidas = ['jpg', 'jpeg', 'png', 'gif'];
         if (!in_array($extension, $extensionesPermitidas)) {
-            echo json_encode(['success' => false, 'message' => 'Formato de imagen no válido']);
+            echo json_encode(['success' => false, 'message' => 'Formato de imagen no válido. Use: jpg, jpeg, png, gif']);
+            exit;
+        }
+        
+        // Validar tamaño (máximo 5MB)
+        if ($_FILES['avatar']['size'] > 5 * 1024 * 1024) {
+            echo json_encode(['success' => false, 'message' => 'La imagen es demasiado grande. Máximo 5MB']);
             exit;
         }
         
@@ -44,6 +59,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             echo json_encode(['success' => false, 'message' => 'Error al subir la imagen']);
             exit;
         }
+    } elseif (isset($_FILES['avatar']) && $_FILES['avatar']['error'] !== UPLOAD_ERR_NO_FILE) {
+        // Si hay error en la subida
+        $errorMessages = [
+            UPLOAD_ERR_INI_SIZE => 'El archivo es demasiado grande',
+            UPLOAD_ERR_FORM_SIZE => 'El archivo excede el tamaño permitido',
+            UPLOAD_ERR_PARTIAL => 'El archivo se subió parcialmente',
+            UPLOAD_ERR_NO_TMP_DIR => 'Falta directorio temporal',
+            UPLOAD_ERR_CANT_WRITE => 'Error al escribir archivo',
+            UPLOAD_ERR_EXTENSION => 'Extensión de archivo bloqueada'
+        ];
+        
+        $error = $_FILES['avatar']['error'];
+        $message = isset($errorMessages[$error]) ? $errorMessages[$error] : 'Error desconocido al subir archivo';
+        
+        echo json_encode(['success' => false, 'message' => $message]);
+        exit;
     }
 
     try {
@@ -62,25 +93,35 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         ]);
 
         if ($resultado) {
-            // Si es una petición AJAX, devolver JSON
-            if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
-                strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
-                echo json_encode(['success' => true, 'message' => 'Empleado registrado exitosamente']);
-                exit;
-            } else {
-                // Si es una petición normal, redirigir
-                header("Location: ../");
-                exit;
-            }
+            echo json_encode([
+                'success' => true, 
+                'message' => 'Empleado registrado exitosamente',
+                'empleado_id' => $conexion->lastInsertId()
+            ]);
         } else {
-            echo json_encode(['success' => false, 'message' => 'Error al guardar el empleado']);
+            // Si falló la inserción, eliminar imagen subida
+            if ($nombreArchivo && file_exists($dirLocal . '/' . $nombreArchivo)) {
+                unlink($dirLocal . '/' . $nombreArchivo);
+            }
+            echo json_encode(['success' => false, 'message' => 'Error al guardar el empleado en la base de datos']);
         }
 
     } catch (PDOException $e) {
-        // Log del error para debugging
+        // Si hay error de BD, eliminar imagen subida
+        if ($nombreArchivo && file_exists($dirLocal . '/' . $nombreArchivo)) {
+            unlink($dirLocal . '/' . $nombreArchivo);
+        }
+        
+        // Log del error
         error_log("Error al insertar empleado: " . $e->getMessage());
-        echo json_encode(['success' => false, 'message' => 'Error en la base de datos: ' . $e->getMessage()]);
+        
+        echo json_encode([
+            'success' => false, 
+            'message' => 'Error en la base de datos: ' . $e->getMessage()
+        ]);
     }
+    
+    exit; // Importante: terminar la ejecución aquí
 }
 
 /**
