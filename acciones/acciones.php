@@ -18,7 +18,6 @@ try {
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // Headers para respuesta JSON
     header('Content-Type: application/json; charset=utf-8');
     
     $nombre   = trim($_POST['nombre'] ?? '');
@@ -26,7 +25,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $sexo     = trim($_POST['sexo'] ?? '');
     $telefono = trim($_POST['telefono'] ?? '');
     $cargo    = trim($_POST['cargo'] ?? '');
-    $dirLocal = "fotos_empleados";
 
     // Validar campos obligatorios
     if (empty($nombre) || empty($edad) || empty($sexo) || empty($telefono) || empty($cargo)) {
@@ -40,17 +38,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         exit;
     }
 
-    // Crear directorio si no existe
-    if (!is_dir($dirLocal)) {
-        if (!mkdir($dirLocal, 0755, true)) {
-            echo json_encode(['success' => false, 'message' => 'Error al crear directorio para imágenes']);
-            exit;
-        }
+    // Verificar que la conexión existe
+    if (!isset($conexion)) {
+        echo json_encode(['success' => false, 'message' => 'Error: No hay conexión a la base de datos']);
+        exit;
     }
 
-    $nombreArchivo = null;
+    $avatarBase64 = null;
 
-    // Procesar imagen si se subió
+    // Procesar imagen si se subió - convertir a Base64
     if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
         $archivoTemporal = $_FILES['avatar']['tmp_name'];
         $nombreOriginal = $_FILES['avatar']['name'];
@@ -63,19 +59,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             exit;
         }
         
-        // Validar tamaño (máximo 5MB)
-        if ($_FILES['avatar']['size'] > 5 * 1024 * 1024) {
-            echo json_encode(['success' => false, 'message' => 'La imagen es demasiado grande. Máximo 5MB']);
+        // Validar tamaño (máximo 2MB para Base64)
+        if ($_FILES['avatar']['size'] > 2 * 1024 * 1024) {
+            echo json_encode(['success' => false, 'message' => 'La imagen es demasiado grande. Máximo 2MB']);
             exit;
         }
         
-        $nombreArchivo = substr(md5(uniqid(rand())), 0, 10) . "." . $extension;
-        $rutaDestino = $dirLocal . '/' . $nombreArchivo;
-
-        if (!move_uploaded_file($archivoTemporal, $rutaDestino)) {
-            echo json_encode(['success' => false, 'message' => 'Error al subir la imagen']);
+        // Leer el archivo y convertir a Base64
+        $imageData = file_get_contents($archivoTemporal);
+        if ($imageData === false) {
+            echo json_encode(['success' => false, 'message' => 'Error al leer la imagen']);
             exit;
         }
+        
+        // Crear data URL
+        $mimeType = mime_content_type($archivoTemporal);
+        $avatarBase64 = 'data:' . $mimeType . ';base64,' . base64_encode($imageData);
+        
     } elseif (isset($_FILES['avatar']) && $_FILES['avatar']['error'] !== UPLOAD_ERR_NO_FILE) {
         // Si hay error en la subida
         $errorMessages = [
@@ -106,7 +106,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             'sexo'     => $sexo,
             'telefono' => $telefono,
             'cargo'    => $cargo,
-            'avatar'   => $nombreArchivo
+            'avatar'   => $avatarBase64  // Guardar como Base64
         ]);
 
         if ($resultado) {
@@ -116,20 +116,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 'empleado_id' => $conexion->lastInsertId()
             ]);
         } else {
-            // Si falló la inserción, eliminar imagen subida
-            if ($nombreArchivo && file_exists($dirLocal . '/' . $nombreArchivo)) {
-                unlink($dirLocal . '/' . $nombreArchivo);
-            }
             echo json_encode(['success' => false, 'message' => 'Error al guardar el empleado en la base de datos']);
         }
 
     } catch (PDOException $e) {
-        // Si hay error de BD, eliminar imagen subida
-        if ($nombreArchivo && file_exists($dirLocal . '/' . $nombreArchivo)) {
-            unlink($dirLocal . '/' . $nombreArchivo);
-        }
-        
-        // Log del error
         error_log("Error al insertar empleado: " . $e->getMessage());
         
         echo json_encode([
@@ -138,7 +128,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         ]);
     }
     
-    exit; // Importante: terminar la ejecución aquí
+    exit;
 }
 
 /**
