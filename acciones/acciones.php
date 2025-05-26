@@ -44,54 +44,34 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         exit;
     }
 
-    $avatarBase64 = null;
+     $dirLocal = "fotos_empleados";
 
-    // Procesar imagen si se subió - convertir a Base64
-    if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
+    if (isset($_FILES['avatar'])) {
         $archivoTemporal = $_FILES['avatar']['tmp_name'];
-        $nombreOriginal = $_FILES['avatar']['name'];
-        $extension = strtolower(pathinfo($nombreOriginal, PATHINFO_EXTENSION));
-        
-        // Validar extensión
-        $extensionesPermitidas = ['jpg', 'jpeg', 'png', 'gif'];
-        if (!in_array($extension, $extensionesPermitidas)) {
-            echo json_encode(['success' => false, 'message' => 'Formato de imagen no válido. Use: jpg, jpeg, png, gif']);
-            exit;
+        $nombreArchivo = $_FILES['avatar']['name'];
+
+        $extension = strtolower(pathinfo($nombreArchivo, PATHINFO_EXTENSION));
+
+        // Generar un nombre único y seguro para el archivo
+        $nombreArchivo = substr(md5(uniqid(rand())), 0, 10) . "." . $extension;
+        $rutaDestino = $dirLocal . '/' . $nombreArchivo;
+
+        // Mover el archivo a la ubicación deseada
+        if (move_uploaded_file($archivoTemporal, $rutaDestino)) {
+
+            $sql = "INSERT INTO $tbl_empleados (nombre, edad, sexo, telefono, cargo, avatar) 
+            VALUES ('$nombre', '$edad', '$sexo', '$telefono', '$cargo', '$nombreArchivo')";
+
+            if ($conexion->query($sql) === TRUE) {
+                header("location:../");
+            } else {
+                echo "Error al crear el registro: " . $conexion->error;
+            }
+        } else {
+            echo json_encode(array('error' => 'Error al mover el archivo'));
         }
-        
-        // Validar tamaño (máximo 2MB para Base64)
-        if ($_FILES['avatar']['size'] > 2 * 1024 * 1024) {
-            echo json_encode(['success' => false, 'message' => 'La imagen es demasiado grande. Máximo 2MB']);
-            exit;
-        }
-        
-        // Leer el archivo y convertir a Base64
-        $imageData = file_get_contents($archivoTemporal);
-        if ($imageData === false) {
-            echo json_encode(['success' => false, 'message' => 'Error al leer la imagen']);
-            exit;
-        }
-        
-        // Crear data URL
-        $mimeType = mime_content_type($archivoTemporal);
-        $avatarBase64 = 'data:' . $mimeType . ';base64,' . base64_encode($imageData);
-        
-    } elseif (isset($_FILES['avatar']) && $_FILES['avatar']['error'] !== UPLOAD_ERR_NO_FILE) {
-        // Si hay error en la subida
-        $errorMessages = [
-            UPLOAD_ERR_INI_SIZE => 'El archivo es demasiado grande',
-            UPLOAD_ERR_FORM_SIZE => 'El archivo excede el tamaño permitido',
-            UPLOAD_ERR_PARTIAL => 'El archivo se subió parcialmente',
-            UPLOAD_ERR_NO_TMP_DIR => 'Falta directorio temporal',
-            UPLOAD_ERR_CANT_WRITE => 'Error al escribir archivo',
-            UPLOAD_ERR_EXTENSION => 'Extensión de archivo bloqueada'
-        ];
-        
-        $error = $_FILES['avatar']['error'];
-        $message = isset($errorMessages[$error]) ? $errorMessages[$error] : 'Error desconocido al subir archivo';
-        
-        echo json_encode(['success' => false, 'message' => $message]);
-        exit;
+    } else {
+        echo json_encode(array('error' => 'No se ha enviado ningún archivo o ha ocurrido un error al cargar el archivo'));
     }
 
     try {
@@ -106,7 +86,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             'sexo'     => $sexo,
             'telefono' => $telefono,
             'cargo'    => $cargo,
-            'avatar'   => $avatarBase64  // Guardar como Base64
+            'avatar'   => $nombreArchivo  // Guardar como Base64
         ]);
 
         if ($resultado) {
