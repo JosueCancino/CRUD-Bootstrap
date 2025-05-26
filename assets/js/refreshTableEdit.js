@@ -17,6 +17,7 @@ window.actualizarEmpleadoEdit = async function (idEmpleado) {
             <td>${infoEmpleado.nombre}</td>
             <td>${infoEmpleado.edad}</td>
             <td>${infoEmpleado.cargo}</td>
+            <td>${infoEmpleado.contrato}</td>
             <td>
               <img class="rounded-circle" src="acciones/fotos_empleados/${
                 infoEmpleado.avatar || "sin-foto.jpg"

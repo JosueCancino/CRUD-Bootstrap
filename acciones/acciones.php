@@ -1,4 +1,23 @@
 <?php
+header('Content-Type: application/json');
+
+// Establecer conexión con PDO
+$host = "dpg-d0oc1u8dl3ps73du8ekg-a";
+$port = "5432";
+$dbname = "bd_empleados_5765";
+$user = "josuecancino";
+$password = "UcfOse1UhwBBoIWFyyKgBpURpJhiD1GD";
+
+try {
+    $conexion = new PDO("pgsql:host=$host;port=$port;dbname=$dbname", $user, $password);
+    $conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $e) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'Error de conexión: ' . $e->getMessage()
+    ]);
+    exit;
+}
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Headers para respuesta JSON

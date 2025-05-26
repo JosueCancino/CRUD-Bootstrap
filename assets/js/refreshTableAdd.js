@@ -16,6 +16,7 @@ window.insertEmpleadoTable = async function () {
         <td>${infoEmpleado.edad}</td>
         <td>${infoEmpleado.cedula}</td>
         <td>${infoEmpleado.cargo}</td>
+        <td>${infoEmpleado.Contrato}</td>
         <td>
           <img class="rounded-circle" src="acciones/fotos_empleados/${
             infoEmpleado.avatar || "sin-foto.jpg"

@@ -51,25 +51,79 @@ async function registrarEmpleado(event) {
     const formData = new FormData(formulario);
 
     // Enviar los datos del formulario al backend usando Axios
-    const response = await axios.post("acciones/acciones.php", formData);
+    const response = await axios.post("acciones/acciones.php", formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+
+    console.log('Respuesta del servidor:', response); // Para debug
 
     // Verificar la respuesta del backend
-    if (response.status === 200) {
-      // Llamar a la función insertEmpleadoTable para insertar el nuevo registro en la tabla
-      window.insertEmpleadoTable();
+    if (response.status === 200 && response.data) {
+      // Verificar si la respuesta indica éxito
+      if (response.data.success) {
+        // Llamar a la función insertEmpleadoTable para insertar el nuevo registro en la tabla
+        if (typeof window.insertEmpleadoTable === 'function') {
+          window.insertEmpleadoTable();
+        } else {
+          // Si no existe la función, recargar la página como alternativa
+          window.location.reload();
+        }
 
-      setTimeout(() => {
-        $("#agregarEmpleadoModal").css("opacity", "");
-        $("#agregarEmpleadoModal").modal("hide");
+        setTimeout(() => {
+          $("#agregarEmpleadoModal").css("opacity", "");
+          $("#agregarEmpleadoModal").modal("hide");
 
-        //Llamar a la función para mostrar un mensaje de éxito
-        toastr.options = window.toastrOptions;
-        toastr.success("¡El empleado se actualizo correctamente!.");
-      }, 600);
+          // Llamar a la función para mostrar un mensaje de éxito
+          if (typeof toastr !== 'undefined') {
+            toastr.options = window.toastrOptions || {};
+            toastr.success(response.data.message || "¡El empleado se registró correctamente!");
+          } else {
+            alert(response.data.message || "¡El empleado se registró correctamente!");
+          }
+        }, 600);
+      } else {
+        // Error del servidor
+        console.error("Error del servidor:", response.data.message);
+        if (typeof toastr !== 'undefined') {
+          toastr.error(response.data.message || "Error al registrar el empleado");
+        } else {
+          alert(response.data.message || "Error al registrar el empleado");
+        }
+      }
     } else {
-      console.error("Error al registrar el empleado");
+      console.error("Respuesta inesperada del servidor:", response);
+      if (typeof toastr !== 'undefined') {
+        toastr.error("Error inesperado del servidor");
+      } else {
+        alert("Error inesperado del servidor");
+      }
     }
   } catch (error) {
-    console.error("Error al enviar el formulario", error);
+    console.error("Error al enviar el formulario:", error);
+    
+    // Mostrar mensaje de error más específico
+    let errorMessage = "Error al enviar el formulario";
+    
+    if (error.response) {
+      // El servidor respondió con un código de estado de error
+      console.error("Error de respuesta:", error.response.data);
+      errorMessage = error.response.data.message || "Error del servidor";
+    } else if (error.request) {
+      // La petición se hizo pero no se recibió respuesta
+      console.error("Error de red:", error.request);
+      errorMessage = "Error de conexión con el servidor";
+    } else {
+      // Algo más causó el error
+      console.error("Error:", error.message);
+      errorMessage = error.message;
+    }
+    
+    if (typeof toastr !== 'undefined') {
+      toastr.error(errorMessage);
+    } else {
+      alert(errorMessage);
+    }
   }
 }
