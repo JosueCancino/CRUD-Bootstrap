@@ -1,6 +1,4 @@
 <?php
-header('Content-Type: application/json');
-
 // Establecer conexión con PDO
 $host = "dpg-d0oc1u8dl3ps73du8ekg-a";
 $port = "5432";

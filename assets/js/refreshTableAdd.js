@@ -23,6 +23,9 @@ window.insertEmpleadoTable = async function () {
           }" alt="${infoEmpleado.nombre}" width="50" height="50">
         </td>
         <td>
+          <a title="Agregar contrato al empleado" href="#" onclick="modalRegistrarContrato(${
+            infoEmpleado.id
+          })" class="btn btn-primary"><i class="bi bi-file-text"></i></a>  
           <a title="Ver detalles del empleado" href="#" onclick="verDetallesEmpleado(${
             infoEmpleado.id
           })" class="btn btn-success"><i class="bi bi-binoculars"></i></a>
