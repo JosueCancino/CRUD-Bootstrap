@@ -47,14 +47,48 @@ async function registrarEmpleado(event) {
     event.preventDefault(); // Evitar que la página se recargue al enviar el formulario
 
     const formulario = document.querySelector("#formularioEmpleado");
+    
+    // Validar campos antes de enviar
+    const nombre = formulario.querySelector('[name="nombre"]').value.trim();
+    const edad = formulario.querySelector('[name="edad"]').value;
+    const sexo = formulario.querySelector('[name="sexo"]:checked')?.value;
+    const telefono = formulario.querySelector('[name="telefono"]').value.trim();
+    const cargo = formulario.querySelector('[name="cargo"]').value;
+    
+    if (!nombre || !edad || !sexo || !telefono || !cargo) {
+      if (typeof toastr !== 'undefined') {
+        toastr.error('Todos los campos son obligatorios');
+      } else {
+        alert('Todos los campos son obligatorios');
+      }
+      return;
+    }
+
+    // Deshabilitar el botón mientras se procesa
+    const btnSubmit = formulario.querySelector('.btn_add');
+    const textoOriginal = btnSubmit.innerHTML;
+    btnSubmit.disabled = true;
+    btnSubmit.innerHTML = 'Registrando...';
+
     // Crear un objeto FormData para enviar los datos del formulario
     const formData = new FormData(formulario);
+
+    // Log para debugging
+    console.log('Enviando datos:', {
+      nombre: formData.get('nombre'),
+      edad: formData.get('edad'),
+      sexo: formData.get('sexo'),
+      telefono: formData.get('telefono'),
+      cargo: formData.get('cargo'),
+      avatar: formData.get('avatar')?.name || 'Sin archivo'
+    });
 
     // Enviar los datos del formulario al backend usando Axios
     const response = await axios.post("acciones/acciones.php", formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
-      }
+      },
+      timeout: 30000 // 30 segundos de timeout
     });
 
     console.log('Respuesta del servidor:', response); // Para debug
@@ -109,7 +143,16 @@ async function registrarEmpleado(event) {
     if (error.response) {
       // El servidor respondió con un código de estado de error
       console.error("Error de respuesta:", error.response.data);
-      errorMessage = error.response.data.message || "Error del servidor";
+      console.error("Status:", error.response.status);
+      console.error("Headers:", error.response.headers);
+      
+      // Si la respuesta es HTML (posible error de PHP), intentar parsearlo
+      if (typeof error.response.data === 'string' && error.response.data.includes('<')) {
+        errorMessage = "Error del servidor - Revisar logs de PHP";
+        console.error("Respuesta HTML del servidor:", error.response.data);
+      } else {
+        errorMessage = error.response.data.message || `Error del servidor (${error.response.status})`;
+      }
     } else if (error.request) {
       // La petición se hizo pero no se recibió respuesta
       console.error("Error de red:", error.request);
@@ -124,6 +167,13 @@ async function registrarEmpleado(event) {
       toastr.error(errorMessage);
     } else {
       alert(errorMessage);
+    }
+  } finally {
+    // Rehabilitar el botón
+    const btnSubmit = document.querySelector('.btn_add');
+    if (btnSubmit) {
+      btnSubmit.disabled = false;
+      btnSubmit.innerHTML = textoOriginal;
     }
   }
 }

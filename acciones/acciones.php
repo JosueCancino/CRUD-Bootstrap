@@ -44,34 +44,63 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         exit;
     }
 
-     $dirLocal = "fotos_empleados";
+    // Procesar la imagen
+    $nombreArchivo = null;
+    $dirLocal = __DIR__ . "/fotos_empleados"; // Ruta absoluta al directorio
+    $dirRelativo = "acciones/fotos_empleados"; // Ruta relativa para mostrar en web
 
-    if (isset($_FILES['avatar'])) {
+    // Crear directorio si no existe
+    if (!file_exists($dirLocal)) {
+        if (!mkdir($dirLocal, 0755, true)) {
+            echo json_encode(['success' => false, 'message' => 'Error al crear directorio de fotos']);
+            exit;
+        }
+    }
+
+    if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
         $archivoTemporal = $_FILES['avatar']['tmp_name'];
-        $nombreArchivo = $_FILES['avatar']['name'];
+        $nombreOriginal = $_FILES['avatar']['name'];
+        $tamanoArchivo = $_FILES['avatar']['size'];
+        $tipoArchivo = $_FILES['avatar']['type'];
 
-        $extension = strtolower(pathinfo($nombreArchivo, PATHINFO_EXTENSION));
+        // Validar tipo de archivo
+        $tiposPermitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+        if (!in_array($tipoArchivo, $tiposPermitidos)) {
+            echo json_encode(['success' => false, 'message' => 'Tipo de archivo no permitido. Solo se permiten JPG, PNG y GIF']);
+            exit;
+        }
 
+        // Validar tamaño (máximo 5MB)
+        if ($tamanoArchivo > 5 * 1024 * 1024) {
+            echo json_encode(['success' => false, 'message' => 'El archivo es demasiado grande. Máximo 5MB']);
+            exit;
+        }
+
+        $extension = strtolower(pathinfo($nombreOriginal, PATHINFO_EXTENSION));
+        
         // Generar un nombre único y seguro para el archivo
         $nombreArchivo = substr(md5(uniqid(rand())), 0, 10) . "." . $extension;
         $rutaDestino = $dirLocal . '/' . $nombreArchivo;
 
         // Mover el archivo a la ubicación deseada
-        if (move_uploaded_file($archivoTemporal, $rutaDestino)) {
-
-            $sql = "INSERT INTO $tbl_empleados (nombre, edad, sexo, telefono, cargo, avatar) 
-            VALUES ('$nombre', '$edad', '$sexo', '$telefono', '$cargo', '$nombreArchivo')";
-
-            if ($conexion->query($sql) === TRUE) {
-                header("location:../");
-            } else {
-                echo "Error al crear el registro: " . $conexion->error;
-            }
-        } else {
-            echo json_encode(array('error' => 'Error al mover el archivo'));
+        if (!move_uploaded_file($archivoTemporal, $rutaDestino)) {
+            echo json_encode(['success' => false, 'message' => 'Error al guardar el archivo']);
+            exit;
         }
-    } else {
-        echo json_encode(array('error' => 'No se ha enviado ningún archivo o ha ocurrido un error al cargar el archivo'));
+    } else if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] !== UPLOAD_ERR_NO_FILE) {
+        // Si hay un error en la subida del archivo (que no sea "no hay archivo")
+        $errores = [
+            UPLOAD_ERR_INI_SIZE => 'El archivo es demasiado grande',
+            UPLOAD_ERR_FORM_SIZE => 'El archivo excede el tamaño máximo permitido',
+            UPLOAD_ERR_PARTIAL => 'El archivo se subió parcialmente',
+            UPLOAD_ERR_NO_TMP_DIR => 'Falta la carpeta temporal',
+            UPLOAD_ERR_CANT_WRITE => 'Error al escribir el archivo',
+            UPLOAD_ERR_EXTENSION => 'Extensión de archivo no permitida'
+        ];
+        
+        $mensajeError = $errores[$_FILES['avatar']['error']] ?? 'Error desconocido al subir archivo';
+        echo json_encode(['success' => false, 'message' => $mensajeError]);
+        exit;
     }
 
     try {
@@ -86,20 +115,30 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             'sexo'     => $sexo,
             'telefono' => $telefono,
             'cargo'    => $cargo,
-            'avatar'   => $nombreArchivo  // Guardar como Base64
+            'avatar'   => $nombreArchivo // Puede ser null si no se subió imagen
         ]);
 
         if ($resultado) {
             echo json_encode([
                 'success' => true, 
                 'message' => 'Empleado registrado exitosamente',
-                'empleado_id' => $conexion->lastInsertId()
+                'empleado_id' => $conexion->lastInsertId(),
+                'avatar' => $nombreArchivo
             ]);
         } else {
+            // Si falla la inserción y se subió una imagen, eliminarla
+            if ($nombreArchivo && file_exists($dirLocal . '/' . $nombreArchivo)) {
+                unlink($dirLocal . '/' . $nombreArchivo);
+            }
             echo json_encode(['success' => false, 'message' => 'Error al guardar el empleado en la base de datos']);
         }
 
     } catch (PDOException $e) {
+        // Si hay error en la base de datos y se subió una imagen, eliminarla
+        if ($nombreArchivo && file_exists($dirLocal . '/' . $nombreArchivo)) {
+            unlink($dirLocal . '/' . $nombreArchivo);
+        }
+        
         error_log("Error al insertar empleado: " . $e->getMessage());
         
         echo json_encode([
@@ -153,5 +192,15 @@ function obtenerContratos($conexion)
         error_log("Error al obtener contratos: " . $e->getMessage());
         return [];
     }
+}
+
+/**
+ * Función auxiliar para obtener la URL completa de la imagen
+ */
+function obtenerUrlAvatar($nombreArchivo) {
+    if (empty($nombreArchivo)) {
+        return 'assets/img/default-avatar.png'; // Imagen por defecto
+    }
+    return 'acciones/fotos_empleados/' . $nombreArchivo;
 }
 ?>
